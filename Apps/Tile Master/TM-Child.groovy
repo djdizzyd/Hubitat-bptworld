@@ -4,7 +4,7 @@
  *  Design Usage:
  *  Create a tile with multiple devices and customization options.
  *
- *  Copyright 2019 Bryan Turcotte (@bptworld)
+ *  Copyright 2019-2020 Bryan Turcotte (@bptworld)
  * 
  *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
@@ -33,7 +33,10 @@
  *
  *  Changes:
  *
- *  V2.1.2 - 12/03/19 - Attempt to fix color overwriting the value
+ *  V2.1.5 - 02/05/20 - Support Smoke/CO decectors (clear-detected) by @LostJen. Thanks!
+ *  V2.1.4 - 02/02/20 - Added Date/Time formatting for Last Activity
+ *  V2.1.3 - 02/02/20 - Added switch to hide/unhide device attribute
+ *  V2.1.2 - 01/19/20 - Attempt to fix an issue with %lastAct%
  *  V2.1.1 - 11/01/19 - Updated Table build logic to minimize formating (jerry.molenaar)
  *  V2.1.0 - 10/08/19 - Added wildcard to display Last Activity of choosen device
  *  V2.0.9 - 09/30/19 - Fixed issue with values of '0' not displaying and color options causing troubles
@@ -55,7 +58,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "TileMasterChildVersion"
-	state.version = "v2.1.2"
+	state.version = "v2.1.5"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -89,9 +92,9 @@ preferences {
 }
 
 def pageConfig() {
-    dynamicPage(name: "", title: "", install: true, uninstall: true) {
+    dynamicPage(name: "", title: "<h2 style='color:#1A77C9;font-weight: bold'>Tile Master</h2>", install: true, uninstall: true, refreshInterval:0) {
 		display() 
-        section("${getImage('instructions')} <b>Instructions:</b>", hideable: true, hidden: true) {
+        section("Instructions:", hideable: true, hidden: true) {
 			paragraph "<b>Notes:</b>"
 			paragraph "Create a tile with multiple devices and customization options."
 		}
@@ -116,6 +119,7 @@ def pageConfig() {
 
 def line01Options(){
     dynamicPage(name: "line01Options", title: "Line 01 Options", install: false, uninstall: false){
+        state.lastActiv = "no"
 		section(getFormat("header-green", "${getImage("Blank")}"+" Table Options")) {           
             input "nSections01", "enum", title: "Number of Sections", required: false, multiple: false, options: ["1","2","3"], submitOnChange: true
 			if(nSections01 == "1") {
@@ -157,16 +161,19 @@ def line01Options(){
 				input "wordsAFT01", "text", title: "Text AFTER Device Status", required: false, submitOnChange: true, width:6
                 if(wordsBEF01) if(wordsBEF01.toLowerCase().contains("wlink")) {
                     input "linkBEF01", "text", title: "Text Before is a link. Please enter a friendly name to display on tile.", submitOnChange: true
-                }
+                }               
                 if(wordsAFT01) if(wordsAFT01.toLowerCase().contains("wlink")) {
                     input "linkAFT01", "text", title: "Text After is a link. Please enter a friendly name to display on tile.", submitOnChange: true
                 }
+                if(wordsBEF01) {if(wordsBEF01.contains("lastAct")) state.lastActiv = "yes"}
+                if(wordsAFT01) {if(wordsAFT01.contains("lastAct")) state.lastActiv = "yes"}                   
 				input "device01", "capability.*", title: "Device", required:false, multiple:false, submitOnChange:true
 				if(device01) {
 					def allAtts01 = [:]
 					allAtts01 = device01.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
 					input "deviceAtts01", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts01
-                    input "useColors01", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true
+                    input "useColors01", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true, width:6
+                    input "hideAttr01", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true, width:6
 					state.deviceStatus01 = device01.currentValue("${deviceAtts01}")
 					if(state.deviceStatus01 == null || state.deviceStatus01 == "") state.deviceStatus01 = "No Data"
 					if(device01 && deviceAtts01) paragraph "Current Status of Device Attribute: ${device01} - ${deviceAtts01} - ${state.deviceStatus01}"
@@ -174,7 +181,7 @@ def line01Options(){
 				input "fontSize01", "number", title: "Font Size", required: true, defaultValue: "15", submitOnChange: true, width:6
 				input "align01", "enum", title: "Alignment", required: true, multiple: false, options: ["Left","Center","Right"], defaultValue: "Left", submitOnChange: true, width: 4
 				input "color01", "text", title: "Text Color (ie. Black, Blue, Brown, Green, Orange, Red, Yellow, White)", required: true, defaultValue: "Black", submitOnChange: true, width:6
-				}
+            }
 		}
 		if(nSections01 == "2" || nSections01 == "3") {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Line 01 - Section 2 Options")) {
@@ -189,12 +196,15 @@ def line01Options(){
                 if(wordsAFT01a) if(wordsAFT01a.toLowerCase().contains("wlink")) {
                     input "linkAFT01a", "text", title: "Text After is a link. Please enter a friendly name to display on tile.", submitOnChange: true
                 }
+                if(wordsBEF01a) {if(wordsBEF01a.contains("lastAct")) state.lastActiv = "yes"}
+                if(wordsAFT01a) {if(wordsAFT01a.contains("lastAct")) state.lastActiv = "yes"}
 				input "device01a", "capability.*", title: "Device", required:false, multiple:false, submitOnChange:true
 				if(device01a) {
 					def allAtts01a = [:]
 					allAtts01a = device01a.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
 					input "deviceAtts01a", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts01a
-                    input "useColors01a", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true
+                    input "useColors01a", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true, width:6
+                    input "hideAttr01a", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true, width:6
 					state.deviceStatus01a = device01a.currentValue("${deviceAtts01a}")
 					if(state.deviceStatus01a == null || state.deviceStatus01a == "") state.deviceStatus01a = "No Data"
 					if(device01a && deviceAtts01a) paragraph "Current Status of Device Attribute: ${device01a} - ${deviceAtts01a} - ${state.deviceStatus01a}"
@@ -217,12 +227,15 @@ def line01Options(){
                 if(wordsAFT01b) if(wordsAFT01b.toLowerCase().contains("wlink")) {
                     input "linkAFT01b", "text", title: "Text After is a link. Please enter a friendly name to display on tile.", submitOnChange: true
                 }
+                if(wordsBEF01b) {if(wordsBEF01b.contains("lastAct")) state.lastActiv = "yes"}
+                if(wordsAFT01b) {if(wordsAFT01b.contains("lastAct")) state.lastActiv = "yes"}
 				input "device01b", "capability.*", title: "Device", required:false, multiple:false, submitOnChange:true
 				if(device01b) {
 					def allAtts01b = [:]
 					allAtts01b = device01b.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
 					input "deviceAtts01b", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts01b
-                    input "useColors01b", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true
+                    input "useColors01b", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true, width:6
+                    input "hideAttr01b", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true, width:6
 					state.deviceStatus01b = device01b.currentValue("${deviceAtts01b}")
 					if(state.deviceStatus01b == null || state.deviceStatus01b == "") state.deviceStatus01b = "No Data"
 					if(device01b && deviceAtts01b) paragraph "Current Status of Device Attribute: ${device01b} - ${deviceAtts01b} - ${state.deviceStatus01b}"
@@ -232,6 +245,20 @@ def line01Options(){
 				input "color01b", "text", title: "Text Color (ie. Black, Blue, Brown, Green, Orange, Red, Yellow, White)", required: true, defaultValue: "Black", submitOnChange: true, width:6
 			}
 		}
+        if(state.lastActiv == "yes") {
+            section(getFormat("header-green", "${getImage("Blank")}"+" Last Activity Formatting")) {
+                input "dateTimeFormat01", "enum", title: "Select Formatting", required: true, multiple: false, submitOnChange: true, options: [
+                    ["f1":"MMM dd, yyy - h:mm:ss a"],
+                	["f2":"dd MMM, yyy - h:mm:ss a"],
+                    ["f3":"MMM dd - h:mm:ss a (12 hour)"],
+                    ["f4":"dd MMM - h:mm:ss a (12 hour)"],
+                    ["f5":"MMM dd - HH:mm (24 hour)"],
+                    ["f6":"dd MMM - HH:mm (24 hour)"],
+                    ["f7":"h:mm:ss a (12 hour)"],
+                    ["f8":"HH:mm:ss (24 hour)"],
+                ]
+            }
+        }
 		sampleTileHandler()
 	}
 }	
@@ -283,12 +310,15 @@ def line02Options(){
                 if(wordsAFT02) if(wordsAFT02.toLowerCase().contains("wlink")) {
                     input "linkAFT02", "text", title: "Text After is a link. Please enter a friendly name to display on tile.", submitOnChange: true
                 }
+                if(wordsBEF02) {if(wordsBEF02.contains("lastAct")) state.lastActiv = "yes"}
+                if(wordsAFT02) {if(wordsAFT02.contains("lastAct")) state.lastActiv = "yes"}
 				input "device02", "capability.*", title: "Device", required:false, multiple:false, submitOnChange:true
 				if(device02) {
 					def allAtts02 = [:]
 					allAtts02 = device02.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
 					input "deviceAtts02", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts02
-                    input "useColors02", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true
+                    input "useColors02", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true, width:6
+                    input "hideAttr02", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true, width:6
 					state.deviceStatus02 = device02.currentValue("${deviceAtts02}")
 					if(state.deviceStatus02 == null) state.deviceStatus02 = "No Data"
 					if(device02 && deviceAtts02) paragraph "Current Status of Device Attribute: ${device02} - ${deviceAtts02} - ${state.deviceStatus02}"
@@ -311,12 +341,15 @@ def line02Options(){
                 if(wordsAFT02a) if(wordsAFT02a.toLowerCase().contains("wlink")) {
                     input "linkAFT02a", "text", title: "Text After is a link. Please enter a friendly name to display on tile.", submitOnChange: true
                 }
+                if(wordsBEF02a) {if(wordsBEF02a.contains("lastAct")) state.lastActiv = "yes"}
+                if(wordsAFT02a) {if(wordsAFT02a.contains("lastAct")) state.lastActiv = "yes"}
 				input "device02a", "capability.*", title: "Device", required:false, multiple:false, submitOnChange:true
 				if(device02a) {
 					def allAtts02a = [:]
 					allAtts02a = device02a.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
 					input "deviceAtts02a", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts02a
-                    input "useColors02a", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true
+                    input "useColors02a", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true, width:6
+                    input "hideAttr02a", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true, width:6
 					state.deviceStatus02a = device02a.currentValue("${deviceAtts02a}")
 					if(state.deviceStatus02a == null) state.deviceStatus02a = "No Data"
 					if(device02a && deviceAtts02a) paragraph "Current Status of Device Attribute: ${device02a} - ${deviceAtts02a} - ${state.deviceStatus02a}"
@@ -339,12 +372,15 @@ def line02Options(){
                 if(wordsAFT02b) if(wordsAFT02b.toLowerCase().contains("wlink")) {
                     input "linkAFT02b", "text", title: "Text After is a link. Please enter a friendly name to display on tile.", submitOnChange: true
                 }
+                if(wordsBEF02b) {if(wordsBEF02b.contains("lastAct")) state.lastActiv = "yes"}
+                if(wordsAFT02b) {if(wordsAFT02b.contains("lastAct")) state.lastActiv = "yes"}
 				input "device02b", "capability.*", title: "Device", required:false, multiple:false, submitOnChange:true
 				if(device02b) {
 					def allAtts02b = [:]
 					allAtts02b = device02b.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
 					input "deviceAtts02b", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts02b
-                    input "useColors02b", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true
+                    input "useColors02b", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true, width:6
+                    input "hideAttr02b", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true, width:6
 					state.deviceStatus02b = device02b.currentValue("${deviceAtts02b}")
 					if(state.deviceStatus02b == null) state.deviceStatus02b = "No Data"
 					if(device02b && deviceAtts02b) paragraph "Current Status of Device Attribute: ${device02b} - ${deviceAtts02b} - ${state.deviceStatus02b}"
@@ -354,6 +390,20 @@ def line02Options(){
 				input "color02b", "text", title: "Text Color (ie. Black, Blue, Brown, Green, Orange, Red, Yellow, White)", required: true, defaultValue: "Black", submitOnChange: true, width:6
 			}
 		}
+        if(state.lastActiv == "yes") {
+            section(getFormat("header-green", "${getImage("Blank")}"+" Last Activity Formatting")) {
+                input "dateTimeFormat02", "enum", title: "Select Formatting", required: true, multiple: false, submitOnChange: true, options: [
+                    ["f1":"MMM dd, yyy - h:mm:ss a"],
+                	["f2":"dd MMM, yyy - h:mm:ss a"],
+                    ["f3":"MMM dd - h:mm:ss a (12 hour)"],
+                    ["f4":"dd MMM - h:mm:ss a (12 hour)"],
+                    ["f5":"MMM dd - HH:mm (24 hour)"],
+                    ["f6":"dd MMM - HH:mm (24 hour)"],
+                    ["f7":"h:mm:ss a (12 hour)"],
+                    ["f8":"HH:mm:ss (24 hour)"],
+                ]
+            }
+        }
 		sampleTileHandler()
 	}
 }	
@@ -405,12 +455,15 @@ def line03Options(){
                 if(wordsAFT03) if(wordsAFT03.toLowerCase().contains("wlink")) {
                     input "linkAFT03", "text", title: "Text After is a link. Please enter a friendly name to display on tile.", submitOnChange: true
                 }
+                if(wordsBEF03) {if(wordsBEF03.contains("lastAct")) state.lastActiv = "yes"}
+                if(wordsAFT03) {if(wordsAFT03.contains("lastAct")) state.lastActiv = "yes"}
 				input "device03", "capability.*", title: "Device", required:false, multiple:false, submitOnChange:true
 				if(device03) {
 					def allAtts03 = [:]
 					allAtts03 = device03.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
 					input "deviceAtts03", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts03
-                    input "useColors03", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true
+                    input "useColors03", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true, width:6
+                    input "hideAttr03", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true, width:6
 					state.deviceStatus03 = device03.currentValue("${deviceAtts03}")
 					if(state.deviceStatus03 == null) state.deviceStatus03 = "No Data"
 					if(device03 && deviceAtts03) paragraph "Current Status of Device Attribute: ${device03} - ${deviceAtts03} - ${state.deviceStatus03}"
@@ -433,12 +486,15 @@ def line03Options(){
                 if(wordsAFT03a) if(wordsAFT03a.toLowerCase().contains("wlink")) {
                     input "linkAFT03a", "text", title: "Text After is a link. Please enter a friendly name to display on tile.", submitOnChange: true
                 }
+                if(wordsBEF03a) {if(wordsBEF03a.contains("lastAct")) state.lastActiv = "yes"}
+                if(wordsAFT03a) {if(wordsAFT03a.contains("lastAct")) state.lastActiv = "yes"}
 				input "device03a", "capability.*", title: "Device", required:false, multiple:false, submitOnChange:true
 				if(device03a) {
 					def allAtts03a = [:]
 					allAtts03a = device03a.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
 					input "deviceAtts03a", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts03a
-                    input "useColors03a", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true
+                    input "useColors03a", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true, width:6
+                    input "hideAttr03a", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true, width:6
 					state.deviceStatus03a = device03a.currentValue("${deviceAtts03a}")
 					if(state.deviceStatus03a == null) state.deviceStatus03a = "No Data"
 					if(device03a && deviceAtts03a) paragraph "Current Status of Device Attribute: ${device03a} - ${deviceAtts03a} - ${state.deviceStatus03a}"
@@ -461,12 +517,15 @@ def line03Options(){
                 if(wordsAFT03b) if(wordsAFT03b.toLowerCase().contains("wlink")) {
                     input "linkAFT03b", "text", title: "Text After is a link. Please enter a friendly name to display on tile.", submitOnChange: true
                 }
+                if(wordsBEF03b) {if(wordsBEF03b.contains("lastAct")) state.lastActiv = "yes"}
+                if(wordsAFT03b) {if(wordsAFT03b.contains("lastAct")) state.lastActiv = "yes"}
 				input "device03b", "capability.*", title: "Device", required:false, multiple:false, submitOnChange:true
 				if(device03b) {
 					def allAtts03b = [:]
 					allAtts03b = device03b.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
 					input "deviceAtts03b", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts03b
-                    input "useColors03b", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true
+                    input "useColors03b", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true, width:6
+                    input "hideAttr03b", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true, width:6
 					state.deviceStatus03b = device03b.currentValue("${deviceAtts03b}")
 					if(state.deviceStatus03b == null) state.deviceStatus03b = "No Data"
 					if(device03b && deviceAtts03b) paragraph "Current Status of Device Attribute: ${device03b} - ${deviceAtts03b} - ${state.deviceStatus03b}"
@@ -476,6 +535,20 @@ def line03Options(){
 				input "color03b", "text", title: "Text Color (ie. Black, Blue, Brown, Green, Orange, Red, Yellow, White)", required: true, defaultValue: "Black", submitOnChange: true, width:6
 			}
 		}
+        if(state.lastActiv == "yes") {
+            section(getFormat("header-green", "${getImage("Blank")}"+" Last Activity Formatting")) {
+                input "dateTimeFormat03", "enum", title: "Select Formatting", required: true, multiple: false, submitOnChange: true, options: [
+                    ["f1":"MMM dd, yyy - h:mm:ss a"],
+                	["f2":"dd MMM, yyy - h:mm:ss a"],
+                    ["f3":"MMM dd - h:mm:ss a (12 hour)"],
+                    ["f4":"dd MMM - h:mm:ss a (12 hour)"],
+                    ["f5":"MMM dd - HH:mm (24 hour)"],
+                    ["f6":"dd MMM - HH:mm (24 hour)"],
+                    ["f7":"h:mm:ss a (12 hour)"],
+                    ["f8":"HH:mm:ss (24 hour)"],
+                ]
+            }
+        }
 		sampleTileHandler()
 	}
 }	
@@ -527,12 +600,15 @@ def line04Options(){
                 if(wordsAFT04) if(wordsAFT04.toLowerCase().contains("wlink")) {
                     input "linkAFT04", "text", title: "Text After is a link. Please enter a friendly name to display on tile.", submitOnChange: true
                 }
+                if(wordsBEF04) {if(wordsBEF04.contains("lastAct")) state.lastActiv = "yes"}
+                if(wordsAFT04) {if(wordsAFT04.contains("lastAct")) state.lastActiv = "yes"}
 				input "device04", "capability.*", title: "Device", required:false, multiple:false, submitOnChange:true
 				if(device04) {
 					def allAtts04 = [:]
 					allAtts04 = device04.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
 					input "deviceAtts04", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts04
-                    input "useColors04", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true
+                    input "useColors04", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true, width:6
+                    input "hideAttr04", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true, width:6
 					state.deviceStatus04 = device04.currentValue("${deviceAtts04}")
 					if(state.deviceStatus04 == null) state.deviceStatus04 = "No Data"
 					if(device04 && deviceAtts04) paragraph "Current Status of Device Attribute: ${device04} - ${deviceAtts04} - ${state.deviceStatus04}"
@@ -555,12 +631,15 @@ def line04Options(){
                 if(wordsAFT04a) if(wordsAFT04a.toLowerCase().contains("wlink")) {
                     input "linkAFT04a", "text", title: "Text After is a link. Please enter a friendly name to display on tile.", submitOnChange: true
                 }
+                if(wordsBEF04a) {if(wordsBEF04a.contains("lastAct")) state.lastActiv = "yes"}
+                if(wordsAFT04a) {if(wordsAFT04a.contains("lastAct")) state.lastActiv = "yes"}
 				input "device04a", "capability.*", title: "Device", required:false, multiple:false, submitOnChange:true
 				if(device04a) {
 					def allAtts04a = [:]
 					allAtts04a = device04a.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
 					input "deviceAtts04a", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts04a
-                    input "useColors04a", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true
+                    input "useColors04a", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true, width:6
+                    input "hideAttr04a", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true, width:6
 					state.deviceStatus04a = device04a.currentValue("${deviceAtts04a}")
 					if(state.deviceStatus04a == null) state.deviceStatus04a = "No Data"
 					if(device04a && deviceAtts04a) paragraph "Current Status of Device Attribute: ${device04a} - ${deviceAtts04a} - ${state.deviceStatus04a}"
@@ -583,12 +662,15 @@ def line04Options(){
                 if(wordsAFT04b) if(wordsAFT04b.toLowerCase().contains("wlink")) {
                     input "linkAFT04b", "text", title: "Text After is a link. Please enter a friendly name to display on tile.", submitOnChange: true
                 }
+                if(wordsBEF04b) {if(wordsBEF04b.contains("lastAct")) state.lastActiv = "yes"}
+                if(wordsAFT04b) {if(wordsAFT04b.contains("lastAct")) state.lastActiv = "yes"}
 				input "device04b", "capability.*", title: "Device", required:false, multiple:false, submitOnChange:true
 				if(device04b) {
 					def allAtts04b = [:]
 					allAtts04b = device04b.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
 					input "deviceAtts04b", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts04b
-                    input "useColors04b", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true
+                    input "useColors04b", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true, width:6
+                    input "hideAttr04b", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true, width:6
 					state.deviceStatus04b = device04b.currentValue("${deviceAtts04b}")
 					if(state.deviceStatus04b == null) state.deviceStatus04b = "No Data"
 					if(device04b && deviceAtts04b) paragraph "Current Status of Device Attribute: ${device04b} - ${deviceAtts04b} - ${state.deviceStatus04b}"
@@ -598,6 +680,20 @@ def line04Options(){
 				input "color04b", "text", title: "Text Color (ie. Black, Blue, Brown, Green, Orange, Red, Yellow, White)", required: true, defaultValue: "Black", submitOnChange: true, width:6
 			}
 		}
+        if(state.lastActiv == "yes") {
+            section(getFormat("header-green", "${getImage("Blank")}"+" Last Activity Formatting")) {
+                input "dateTimeFormat04", "enum", title: "Select Formatting", required: true, multiple: false, submitOnChange: true, options: [
+                    ["f1":"MMM dd, yyy - h:mm:ss a"],
+                	["f2":"dd MMM, yyy - h:mm:ss a"],
+                    ["f3":"MMM dd - h:mm:ss a (12 hour)"],
+                    ["f4":"dd MMM - h:mm:ss a (12 hour)"],
+                    ["f5":"MMM dd - HH:mm (24 hour)"],
+                    ["f6":"dd MMM - HH:mm (24 hour)"],
+                    ["f7":"h:mm:ss a (12 hour)"],
+                    ["f8":"HH:mm:ss (24 hour)"],
+                ]
+            }
+        }
 		sampleTileHandler()
 	}
 }	
@@ -649,12 +745,15 @@ def line05Options(){
                 if(wordsAFT05) if(wordsAFT05.toLowerCase().contains("wlink")) {
                     input "linkAFT05", "text", title: "Text After is a link. Please enter a friendly name to display on tile.", submitOnChange: true
                 }
+                if(wordsBEF05) {if(wordsBEF05.contains("lastAct")) state.lastActiv = "yes"}
+                if(wordsAFT05) {if(wordsAFT05.contains("lastAct")) state.lastActiv = "yes"}
 				input "device05", "capability.*", title: "Device", required:false, multiple:false, submitOnChange:true
 				if(device05) {
 					def allAtts05 = [:]
 					allAtts05 = device05.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
 					input "deviceAtts05", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts05
-                    input "useColors05", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true
+                    input "useColors05", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true, width:6
+                    input "hideAttr05", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true, width:6
 					state.deviceStatus05 = device05.currentValue("${deviceAtts05}")
 					if(state.deviceStatus05 == null) state.deviceStatus05 = "No Data"
 					if(device05 && deviceAtts05) paragraph "Current Status of Device Attribute: ${device05} - ${deviceAtts05} - ${state.deviceStatus05}"
@@ -677,12 +776,15 @@ def line05Options(){
                 if(wordsAFT05a) if(wordsAFT05a.toLowerCase().contains("wlink")) {
                     input "linkAFT05a", "text", title: "Text After is a link. Please enter a friendly name to display on tile.", submitOnChange: true
                 }
+                if(wordsBEF05a) {if(wordsBEF05a.contains("lastAct")) state.lastActiv = "yes"}
+                if(wordsAFT05a) {if(wordsAFT05a.contains("lastAct")) state.lastActiv = "yes"}
 				input "device05a", "capability.*", title: "Device", required:false, multiple:false, submitOnChange:true
 				if(device05a) {
 					def allAtts05a = [:]
 					allAtts05a = device05a.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
 					input "deviceAtts05a", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts05a
-                    input "useColors05a", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true
+                    input "useColors05a", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true, width:6
+                    input "hideAttr05a", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true, width:6
 					state.deviceStatus05a = device05a.currentValue("${deviceAtts05a}")
 					if(state.deviceStatus05a == null) state.deviceStatus05a = "No Data"
 					if(device05a && deviceAtts05a) paragraph "Current Status of Device Attribute: ${device05a} - ${deviceAtts05a} - ${state.deviceStatus05a}"
@@ -705,12 +807,15 @@ def line05Options(){
                 if(wordsAFT05b) if(wordsAFT05b.toLowerCase().contains("wlink")) {
                     input "linkAFT05b", "text", title: "Text After is a link. Please enter a friendly name to display on tile.", submitOnChange: true
                 }
+                if(wordsBEF05b) {if(wordsBEF05b.contains("lastAct")) state.lastActiv = "yes"}
+                if(wordsAFT05b) {if(wordsAFT05b.contains("lastAct")) state.lastActiv = "yes"}
 				input "device05b", "capability.*", title: "Device", required:false, multiple:false, submitOnChange:true
 				if(device05b) {
 					def allAtts05b = [:]
 					allAtts05b = device05b.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
 					input "deviceAtts05b", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts05b
-                    input "useColors05b", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true
+                    input "useColors05b", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true, width:6
+                    input "hideAttr05b", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true, width:6
 					state.deviceStatus05b = device05b.currentValue("${deviceAtts05b}")
 					if(state.deviceStatus05b == null) state.deviceStatus05b = "No Data"
 					if(device05b && deviceAtts05b) paragraph "Current Status of Device Attribute: ${device05b} - ${deviceAtts05b} - ${state.deviceStatus05b}"
@@ -720,6 +825,20 @@ def line05Options(){
 				input "color05b", "text", title: "Text Color (ie. Black, Blue, Brown, Green, Orange, Red, Yellow, White)", required: true, defaultValue: "Black", submitOnChange: true, width:6
 			}
 		}
+        if(state.lastActiv == "yes") {
+            section(getFormat("header-green", "${getImage("Blank")}"+" Last Activity Formatting")) {
+                input "dateTimeFormat05", "enum", title: "Select Formatting", required: true, multiple: false, submitOnChange: true, options: [
+                    ["f1":"MMM dd, yyy - h:mm:ss a"],
+                	["f2":"dd MMM, yyy - h:mm:ss a"],
+                    ["f3":"MMM dd - h:mm:ss a (12 hour)"],
+                    ["f4":"dd MMM - h:mm:ss a (12 hour)"],
+                    ["f5":"MMM dd - HH:mm (24 hour)"],
+                    ["f6":"dd MMM - HH:mm (24 hour)"],
+                    ["f7":"h:mm:ss a (12 hour)"],
+                    ["f8":"HH:mm:ss (24 hour)"],
+                ]
+            }
+        }
 		sampleTileHandler()
 	}
 }	
@@ -814,7 +933,7 @@ def tileHandler01(){
         state.theTile01 += "width:${secWidth01}%'>"
         if(wordsBEF01) makeTileLine(1,wordsBEF01,linkBEF01)
         if(wordsBEF01) state.theTile01 += "${newWords2}"
-		if(deviceAtts01) state.theTile01 += "${state.deviceStatus01}"
+		if(deviceAtts01 && !hideAttr01) state.theTile01 += "${state.deviceStatus01}"
 		if(wordsAFT01) makeTileLine(1,wordsAFT01,linkAFT01)
         if(wordsAFT01) state.theTile01 += "${newWords2}"
 	} 
@@ -826,7 +945,7 @@ def tileHandler01(){
         state.theTile01 += "width:${secWidth01a}%'>"
 		if(wordsBEF01a) makeTileLine("1a",wordsBEF01a,linkBEF01a)
         if(wordsBEF01a) state.theTile01 += "${newWords2}"
-		if(deviceAtts01a) state.theTile01 += "${state.deviceStatus01a}"
+		if(deviceAtts01a && !hideAttr01a) state.theTile01 += "${state.deviceStatus01a}"
 		if(wordsAFT01a) makeTileLine("1a",wordsAFT01a,linkAFT01a)
         if(wordsAFT01a) state.theTile01 += "${newWords2}"
 	}
@@ -838,7 +957,7 @@ def tileHandler01(){
         state.theTile01 += "width:${secWidth01b}%'>"
 		if(wordsBEF01b) makeTileLine("1b",wordsBEF01b,linkBEF01b)
         if(wordsBEF01b) state.theTile01 += "${newWords2}"
-		if(deviceAtts01b) state.theTile01 += "${state.deviceStatus01b}"
+		if(deviceAtts01b && !hideAttr01b) state.theTile01 += "${state.deviceStatus01b}"
 		if(wordsAFT01b) makeTileLine("1b",wordsAFT01b,linkAFT01b)
         if(wordsAFT01b) state.theTile01 += "${newWords2}"
 	}
@@ -908,7 +1027,7 @@ def tileHandler02(){
         state.theTile02 += "width:${secWidth02}%'>"
         if(wordsBEF02) makeTileLine(2,wordsBEF02,linkBEF02)
         if(wordsBEF02) state.theTile02 += "${newWords2}"
-		if(deviceAtts02) state.theTile02 += "${state.deviceStatus02}"
+		if(deviceAtts02 && !hideAttr02) state.theTile02 += "${state.deviceStatus02}"
 		if(wordsAFT02) makeTileLine(2,wordsAFT02,linkAFT02)
         if(wordsAFT02) state.theTile02 += "${newWords2}"
 	} 
@@ -920,7 +1039,7 @@ def tileHandler02(){
         state.theTile02 += "width:${secWidth02a}%'>"
 		if(wordsBEF02a) makeTileLine("2a",wordsBEF02a,linkBEF02a)
         if(wordsBEF02a) state.theTile02 += "${newWords2}"
-		if(deviceAtts02a) state.theTile02 += "${state.deviceStatus02a}"
+		if(deviceAtts02a && !hideAttr02a) state.theTile02 += "${state.deviceStatus02a}"
 		if(wordsAFT02a) makeTileLine("2a",wordsAFT02a,linkAFT02a)
         if(wordsAFT02a) state.theTile02 += "${newWords2}"
 	}
@@ -932,7 +1051,7 @@ def tileHandler02(){
         state.theTile02 += "width:${secWidth02b}%'>"
 		if(wordsBEF02b) makeTileLine("2b",wordsBEF02b,linkBEF02b)
         if(wordsBEF02b) state.theTile02 += "${newWords2}"
-		if(deviceAtts02b) state.theTile02 += "${state.deviceStatus02b}"
+		if(deviceAtts02b && !hideAttr02b) state.theTile02 += "${state.deviceStatus02b}"
 		if(wordsAFT02b) makeTileLine("2b",wordsAFT02b,linkAFT02b)
         if(wordsAFT02b) state.theTile02 += "${newWords2}"
 	}
@@ -1002,7 +1121,7 @@ def tileHandler03(){
         state.theTile03 += "width:${secWidth03}%'>"
         if(wordsBEF03) makeTileLine(3,wordsBEF03,linkBEF03)
         if(wordsBEF03) state.theTile03 += "${newWords2}"
-		if(deviceAtts03) state.theTile03 += "${state.deviceStatus03}"
+		if(deviceAtts03 && !hideAttr03) state.theTile03 += "${state.deviceStatus03}"
 		if(wordsAFT03) makeTileLine(3,wordsAFT03,linkAFT03)
         if(wordsAFT03) state.theTile03 += "${newWords2}"
 	} 
@@ -1014,7 +1133,7 @@ def tileHandler03(){
         state.theTile03 += "width:${secWidth03a}%'>"
 		if(wordsBEF03a) makeTileLine("3a",wordsBEF03a,linkBEF03a)
         if(wordsBEF03a) state.theTile03 += "${newWords2}"
-		if(deviceAtts03a) state.theTile03 += "${state.deviceStatus03a}"
+		if(deviceAtts03a && !hideAttr03a) state.theTile03 += "${state.deviceStatus03a}"
 		if(wordsAFT03a) makeTileLine("3a",wordsAFT03a,linkAFT03a)
         if(wordsAFT03a) state.theTile03 += "${newWords2}"
 	}
@@ -1026,7 +1145,7 @@ def tileHandler03(){
         state.theTile03 += "width:${secWidth03b}%'>"
 		if(wordsBEF03b) makeTileLine("3b",wordsBEF03b,linkBEF03b)
         if(wordsBEF03b) state.theTile03 += "${newWords2}"
-		if(deviceAtts03b) state.theTile03 += "${state.deviceStatus03b}"
+		if(deviceAtts03b && !hideAttr03b) state.theTile03 += "${state.deviceStatus03b}"
 		if(wordsAFT03b) makeTileLine("3b",wordsAFT03b,linkAFT03b)
         if(wordsAFT03b) state.theTile03 += "${newWords2}"
 	}
@@ -1096,7 +1215,7 @@ def tileHandler04(){
         state.theTile04 += "width:${secWidth04}%'>"
         if(wordsBEF04) makeTileLine(4,wordsBEF04,linkBEF04)
         if(wordsBEF04) state.theTile04 += "${newWords2}"
-		if(deviceAtts04) state.theTile04 += "${state.deviceStatus04}"
+		if(deviceAtts04 && !hideAttr04) state.theTile04 += "${state.deviceStatus04}"
 		if(wordsAFT04) makeTileLine(4,wordsAFT04,linkAFT04)
         if(wordsAFT04) state.theTile04 += "${newWords2}"
 	} 
@@ -1108,7 +1227,7 @@ def tileHandler04(){
         state.theTile04 += "width:${secWidth04a}%'>"
 		if(wordsBEF04a) makeTileLine("4a",wordsBEF04a,linkBEF04a)
         if(wordsBEF04a) state.theTile04 += "${newWords2}"
-		if(deviceAtts04a) state.theTile04 += "${state.deviceStatus04a}"
+		if(deviceAtts04a && !hideAttr04a) state.theTile04 += "${state.deviceStatus04a}"
 		if(wordsAFT04a) makeTileLine("4a",wordsAFT04a,linkAFT04a)
         if(wordsAFT04a) state.theTile04 += "${newWords2}"
 	}
@@ -1120,7 +1239,7 @@ def tileHandler04(){
         state.theTile04 += "width:${secWidth04b}%'>"
 		if(wordsBEF04b) makeTileLine("4b",wordsBEF04b,linkBEF04b)
         if(wordsBEF04b) state.theTile04 += "${newWords2}"
-		if(deviceAtts04b) state.theTile04 += "${state.deviceStatus04b}"
+		if(deviceAtts04b && !hideAttr04b) state.theTile04 += "${state.deviceStatus04b}"
 		if(wordsAFT04b) makeTileLine("4b",wordsAFT04b,linkAFT04b)
         if(wordsAFT04b) state.theTile04 += "${newWords2}"
 	}
@@ -1190,7 +1309,7 @@ def tileHandler05(){
         state.theTile05 += "width:${secWidth05}%'>"
         if(wordsBEF05) makeTileLine(5,wordsBEF05,linkBEF05)
         if(wordsBEF05) state.theTile05 += "${newWords2}"
-		if(deviceAtts05) state.theTile05 += "${state.deviceStatus05}"
+		if(deviceAtts05 && !hideAttr05) state.theTile05 += "${state.deviceStatus05}"
 		if(wordsAFT05) makeTileLine(5,wordsAFT05,linkAFT05)
         if(wordsAFT05) state.theTile05 += "${newWords2}"
 	} 
@@ -1202,7 +1321,7 @@ def tileHandler05(){
         state.theTile05 += "width:${secWidth05a}%'>"
 		if(wordsBEF05a) makeTileLine("5a",wordsBEF05a,linkBEF05a)
         if(wordsBEF05a) state.theTile05 += "${newWords2}"
-		if(deviceAtts05a) state.theTile05 += "${state.deviceStatus05a}"
+		if(deviceAtts05a && !hideAttr05a) state.theTile05 += "${state.deviceStatus05a}"
 		if(wordsAFT05a) makeTileLine("5a",wordsAFT05a,linkAFT05a)
         if(wordsAFT05a) state.theTile05 += "${newWords2}"
 	}
@@ -1213,7 +1332,7 @@ def tileHandler05(){
         if (fontSize05b != fontSize05) {state.theTile05 += "font-size:${fontSize05b}px;"}
         state.theTile05 += "width:${secWidth05b}%'>"
 		if(wordsBEF05b) makeTileLine("5b",wordsBEF05b,linkBEF05b)
-        if(wordsBEF05b) state.theTile05 += "${newWords2}"
+        if(wordsBEF05b && !hideAttr05b) state.theTile05 += "${newWords2}"
 		if(deviceAtts05b) state.theTile05 += "${state.deviceStatus05b}"
 		if(wordsAFT05b) makeTileLine("5b",wordsAFT05b,linkAFT05b)
         if(wordsAFT05b) state.theTile05 += "${newWords2}"
@@ -1307,7 +1426,6 @@ def makeTile() {
 
 def getStatusColors(deviceStatus,deviceAtts) {
     if(logEnable) log.debug "In getStatusColors (${state.version}) - Received: ${deviceAtts} - ${deviceStatus}"
-    deviceStatus1 = ""
     
     if(deviceAtts) {
         if(deviceAtts.toLowerCase() == "temperature") {
@@ -1344,8 +1462,11 @@ def getStatusColors(deviceStatus,deviceAtts) {
     
     if(deviceStatus == "present") deviceStatus1 = "<span style='color:${parent.colorPresent}'>present</span>"
     if(deviceStatus == "not present") deviceStatus1 = "<span style='color:${parent.colorNotPresent}'>not present</span>"
-    
-    if(deviceStatus1 == null || deviceStatus1 == "") deviceStatus1 = deviceStatus
+
+    if(deviceStatus == "clear") deviceStatus1 = "<span style='color:${parent.colorClear}'>clear</span>"
+    if(deviceStatus == "detected") deviceStatus1 = "<span style='color:${parent.colorDetected}'>detected</span>"
+  
+    if(deviceStatus1 == null) deviceStatus1 = deviceStatus
     if(logEnable) log.debug "In getStatusColors - Returning: ${deviceStatus1}"
     return deviceStatus1
 }
@@ -1360,30 +1481,122 @@ def makeTileLine(dev,words,linkName) {
         newWords2 = "<a href='${newWords}'>${linkName}</a>"
         if(logEnable) log.debug "In makeTileLine - newWords: ${newWords}"
     } else if(words.toLowerCase().contains("%lastact%")) {
-        if(device == "1") { lAct = device01.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' );newWords2 = words.replace("%lastAct%","${lAct}") }
-        if(device == "1a") { lAct = device01a.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' );newWords2 = words.replace("%lastAct%","${lAct}") }
-        if(device == "1b") { lAct = device01b.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' );newWords2 = words.replace("%lastAct%","${lAct}") }
+        try {
+            dateTimeFormatHandler1()
+            if(device == "1") { lAct = device01.getLastActivity().format("${dFormat1}") }
+            if(device == "1a") { lAct = device01a.getLastActivity().format("${dFormat1}") }
+            if(device == "1b") { lAct = device01b.getLastActivity().format("${dFormat1}") }
+            
+            dateTimeFormatHandler2()
+            if(device == "2") { lAct = device02.getLastActivity().format("${dFormat2}") }
+            if(device == "2a") { lAct = device02a.getLastActivity().format("${dFormat2}") }
+            if(device == "2b") { lAct = device02b.getLastActivity().format("${dFormat2}") }
         
-        if(device == "2") { lAct = device02.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' );newWords2 = words.replace("%lastAct%","${lAct}") }
-        if(device == "2a") { lAct = device02a.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' );newWords2 = words.replace("%lastAct%","${lAct}") }
-        if(device == "2b") { lAct = device02b.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' );newWords2 = words.replace("%lastAct%","${lAct}") }
+            dateTimeFormatHandler3()
+            if(device == "3") { lAct = device03.getLastActivity().format("${dFormat3}") }
+            if(device == "3a") { lAct = device03a.getLastActivity().format("${dFormat3}") }
+            if(device == "3b") { lAct = device03b.getLastActivity().format("${dFormat3}") }
         
-        if(device == "3") { lAct = device03.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' );newWords2 = words.replace("%lastAct%","${lAct}") }
-        if(device == "3a") { lAct = device03a.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' );newWords2 = words.replace("%lastAct%","${lAct}") }
-        if(device == "3b") { lAct = device03b.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' );newWords2 = words.replace("%lastAct%","${lAct}") }
+            dateTimeFormatHandler4()
+            if(device == "4") { lAct = device04.getLastActivity().format("${dFormat4}") }
+            if(device == "4a") { lAct = device04a.getLastActivity().format("${dFormat4}") }
+            if(device == "4b") { lAct = device04b.getLastActivity().format("${dFormat4}") }
         
-        if(device == "4") { lAct = device04.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' );newWords2 = words.replace("%lastAct%","${lAct}") }
-        if(device == "4a") { lAct = device04a.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' );newWords2 = words.replace("%lastAct%","${lAct}") }
-        if(device == "4b") { lAct = device04b.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' );newWords2 = words.replace("%lastAct%","${lAct}") }
+            dateTimeFormatHandler5()
+            if(device == "5") { lAct = device05.getLastActivity().format("${dFormat5}") }
+            if(device == "5a") { lAct = device05a.getLastActivity().format("${dFormat5}") }
+            if(device == "5b") { lAct = device05b.getLastActivity().format("${dFormat5}") }
         
-        if(device == "5") { lAct = device05.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' );newWords2 = words.replace("%lastAct%","${lAct}") }
-        if(device == "5a") { lAct = device05a.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' );newWords2 = words.replace("%lastAct%","${lAct}") }
-        if(device == "5b") { lAct = device05b.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' );newWords2 = words.replace("%lastAct%","${lAct}") }
+            if(logEnable) log.debug "In makeTileLine - lAct: ${lAct}"
+            if(lAct) {
+                newWords2 = words.replace("%lastAct%","${lAct}")
+            } else {
+                newWords2 = words.replace("%lastAct%","Not Available")
+            }
+        } catch (e) {
+            newWords2 = words.replace("%lastAct%","Not Available")
+            log.error e
+        }
     } else {
         newWords2 = "${words}"
     }
     if(logEnable) log.debug "In makeTileLine - newWords2: ${newWords2}"
     return newWords2
+}
+
+def dateTimeFormatHandler1() {
+    if(logEnable) log.debug "In dateTimeFormatHandler1 (${state.version})"
+    if(dateTimeFormat01 == "f1") dFormat1 = "MMM dd, yyy - h:mm:ss a"
+    if(dateTimeFormat01 == "f2") dFormat1 = "dd MMM, yyy - h:mm:ss a"
+    if(dateTimeFormat01 == "f3") dFormat1 = "MMM dd - h:mm:ss a"
+    if(dateTimeFormat01 == "f4") dFormat1 = "dd MMM - h:mm:ss a"
+    if(dateTimeFormat01 == "f5") dFormat1 = "MMM dd - HH:mm"
+    if(dateTimeFormat01 == "f6") dFormat1 = "dd MMM - HH:mm"
+    if(dateTimeFormat01 == "f7") dFormat1 = "h:mm:ss a"
+    if(dateTimeFormat01 == "f8") dFormat1 = "HH:mm:ss"
+    
+    if(logEnable) log.debug "In dateTimeFormatHandler - dFormat1: ${dFormat1}"
+    return dFormat1
+}
+
+def dateTimeFormatHandler2() {
+    if(logEnable) log.debug "In dateTimeFormatHandler2 (${state.version})"
+    if(dateTimeFormat02 == "f1") dFormat2 = "MMM dd, yyy - h:mm:ss a"
+    if(dateTimeFormat02 == "f2") dFormat2 = "dd MMM, yyy - h:mm:ss a"
+    if(dateTimeFormat02 == "f3") dFormat2 = "MMM dd - h:mm:ss a"
+    if(dateTimeFormat02 == "f4") dFormat2 = "dd MMM - h:mm:ss a"
+    if(dateTimeFormat02 == "f5") dFormat2 = "MMM dd - HH:mm"
+    if(dateTimeFormat02 == "f6") dFormat2 = "dd MMM - HH:mm"
+    if(dateTimeFormat02 == "f7") dFormat2 = "h:mm:ss a"
+    if(dateTimeFormat02 == "f8") dFormat2 = "HH:mm:ss"
+    
+    if(logEnable) log.debug "In dateTimeFormatHandler - dFormat2: ${dFormat2}"
+    return dFormat2
+}
+
+def dateTimeFormatHandler3() {
+    if(logEnable) log.debug "In dateTimeFormatHandler3 (${state.version})"
+    if(dateTimeFormat03 == "f1") dFormat3 = "MMM dd, yyy - h:mm:ss a"
+    if(dateTimeFormat03 == "f2") dFormat3 = "dd MMM, yyy - h:mm:ss a"
+    if(dateTimeFormat03 == "f3") dFormat3 = "MMM dd - h:mm:ss a"
+    if(dateTimeFormat03 == "f4") dFormat3 = "dd MMM - h:mm:ss a"
+    if(dateTimeFormat03 == "f5") dFormat3 = "MMM dd - HH:mm"
+    if(dateTimeFormat03 == "f6") dFormat3 = "dd MMM - HH:mm"
+    if(dateTimeFormat03 == "f7") dFormat3 = "h:mm:ss a"
+    if(dateTimeFormat03 == "f8") dFormat3 = "HH:mm:ss"
+    
+    if(logEnable) log.debug "In dateTimeFormatHandler - dFormat3: ${dFormat3}"
+    return dFormat3
+}  
+ 
+def dateTimeFormatHandler4() {
+    if(logEnable) log.debug "In dateTimeFormatHandler4 (${state.version})"
+    if(dateTimeFormat04 == "f1") dFormat4 = "MMM dd, yyy - h:mm:ss a"
+    if(dateTimeFormat04 == "f2") dFormat4 = "dd MMM, yyy - h:mm:ss a"
+    if(dateTimeFormat04 == "f3") dFormat4 = "MMM dd - h:mm:ss a"
+    if(dateTimeFormat04 == "f4") dFormat4 = "dd MMM - h:mm:ss a"
+    if(dateTimeFormat04 == "f5") dFormat4 = "MMM dd - HH:mm"
+    if(dateTimeFormat04 == "f6") dFormat4 = "dd MMM - HH:mm"
+    if(dateTimeFormat04 == "f7") dFormat4 = "h:mm:ss a"
+    if(dateTimeFormat04 == "f8") dFormat4 = "HH:mm:ss"
+    
+    if(logEnable) log.debug "In dateTimeFormatHandler - dFormat4: ${dFormat4}"
+    return dFormat4
+}
+
+def dateTimeFormatHandler5() {
+    if(logEnable) log.debug "In dateTimeFormatHandler5 (${state.version})"
+    if(dateTimeFormat05 == "f1") dFormat5 = "MMM dd, yyy - h:mm:ss a"
+    if(dateTimeFormat05 == "f2") dFormat5 = "dd MMM, yyy - h:mm:ss a"
+    if(dateTimeFormat05 == "f3") dFormat5 = "MMM dd - h:mm:ss a"
+    if(dateTimeFormat05 == "f4") dFormat5 = "dd MMM - h:mm:ss a"
+    if(dateTimeFormat05 == "f5") dFormat5 = "MMM dd - HH:mm"
+    if(dateTimeFormat05 == "f6") dFormat5 = "dd MMM - HH:mm"
+    if(dateTimeFormat05 == "f7") dFormat5 = "h:mm:ss a"
+    if(dateTimeFormat05 == "f8") dFormat5 = "HH:mm:ss"
+    
+    if(logEnable) log.debug "In dateTimeFormatHandler - dFormat5: ${dFormat5}"
+    return dFormat5
 }
 
 // ********** Normal Stuff **********
@@ -1406,23 +1619,16 @@ def setDefaults(){
 def getImage(type) {					// Modified from @Stephack Code
     def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
     if(type == "Blank") return "${loc}blank.png height=40 width=5}>"
-    if(type == "checkMarkGreen") return "${loc}checkMarkGreen2.png height=30 width=30>"
-    if(type == "optionsGreen") return "${loc}options-green.png height=30 width=30>"
-    if(type == "optionsRed") return "${loc}options-red.png height=30 width=30>"
-    if(type == "instructions") return "${loc}instructions.png height=30 width=30>"
-    if(type == "logo") return "${loc}logo.png height=60>"
 }
 
-def getFormat(type, myText=""){			// Modified from @Stephack Code   
+def getFormat(type, myText=""){			// Modified from @Stephack Code
 	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
-    if(type == "line") return "<hr style='background-color:#1A77C9; height: 1px; border: 0;'>"
-    if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>"
+    if(type == "line") return "\n<hr style='background-color:#1A77C9; height: 1px; border: 0;'></hr>"
+	if(type == "title") return "<div style='color:blue;font-weight: bold'>${myText}</div>"
 }
 
 def display() {
-    theName = app.label
-    if(theName == null || theName == "") theName = "New Child App"
-    section (getFormat("title", "${getImage("logo")}" + " Tile Master - ${theName}")) {
+	section() {
 		paragraph getFormat("line")
 	}
 }

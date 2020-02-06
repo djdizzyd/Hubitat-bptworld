@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V2.0.6 - 02/05/20 - Support Smoke/CO decectors (clear-detected) by @LostJen. Thanks!
  *  V2.0.5 - 11/04/19 - Fixed some typo's in the color options, thanks scubamikejax904!
  *  V2.0.4 - 09/27/19 - Fixed missing motion color options
  *  V2.0.3 - 09/22/19 - Added color options for Temperature and Battery Levels
@@ -48,7 +49,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Parent app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "TileMasterParentVersion"
-	state.version = "v2.0.5"
+	state.version = "v2.0.6"
     
     try {
         if(sendToAWSwitch && awDevice) {
@@ -146,6 +147,9 @@ def mainPage() {
                 
                 input "colorPresent", "text", title: "<span style='color: ${colorPresent};font-size: 25px'>present</span>", submitOnChange: true, width: 6
                 input "colorNotPresent", "text", title: "<span style='color: ${colorNotPresent};font-size: 25px'>not present</span>", submitOnChange: true, width: 6
+
+                input "colorClear", "text", title: "<span style='color: ${colorClear};font-size: 25px'>clear</span>", submitOnChange: true, width: 6
+                input "colorDetected", "text", title: "<span style='color: ${colorDetected};font-size: 25px'>detected</span>", submitOnChange: true, width: 6
                 
                 paragraph "<b>Temperature Options</b>"
                 input "tempLow", "text", title: "Temp <= LOW", submitOnChange: true, width: 6
@@ -192,5 +196,5 @@ def display(){
 	section() {
 		paragraph getFormat("line")
 		paragraph "<div style='color:#1A77C9;text-align:center'>Tile Master - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>${state.version}</div>"
-	}       
-}         
+    }
+}

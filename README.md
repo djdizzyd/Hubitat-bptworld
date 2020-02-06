@@ -5,7 +5,8 @@ Official Forum: https://community.hubitat.com/<br>
 UnOfficial User Created Apps and Drivers Wiki: www.HubitatApps.com
 <br>
 <hr>
-<b>Donations to support development efforts are accepted via Paypal: https://paypal.me/bptworld</b><br>Remember...I am not a professional programmer, everything I do takes a lot of time and research! Donations for this time and effort are always greatly appreciated. <b>I 'Thank You' for your support.</b>
+<b>Donations to support development efforts are accepted via:<br>
+Paypal: https://paypal.me/bptworld<br>Venmo: Bryan-Turcotte-MA (8477)</b><br>Remember...I am not a professional programmer, everything I do takes a lot of time and research! Donations for this time and effort are always greatly appreciated.<br><b>I 'Thank You' for your support.</b>
 <br><br>
 <i>* Note: Acceptance of donation in no way guarentees support or updates. All apps/drivers are provided 'as is'. While I do my best to maintain/update each app/driver, priorities do change and any app/driver could be depreciated at any time. Thank you for your understanding.</i>
 <hr>
@@ -70,6 +71,9 @@ Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-one-a
 <br><br>
 <b>Pollen Forecaster</b> (Driver) - Retrieve data from pollen.com. For use with Hubitat dashboards.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-pollen-forecaster-and-asthma-forecaster/13636" target="_blank">Go Here</a>
+<br><br>
+<b>Remote Wellness Check</b> - Stay connected to your loved ones. Get notified if they haven't triggered a device in a specified time.<br>
+Hubitat Forum Discussion: <a href="" target="_blank">Not yet</a>
 <br><br>
 <b>Room Director</b> - Make your rooms smarter by directing them to do what you want, automatically.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-room-director-smarter-rooms-automatically/27291" target="_blank">Go Here</a>

@@ -29,10 +29,10 @@
   "FollowMeDriverDiscussion": "",
   "FollowMeDriverUpdateNote": "V2.1.0 - 11/14/19 - Name changed to match Follow Me. Major rework. Changes to work with the updated Follow Me (V2.0.5+)",
   
-  "HomeTrackerDriverVersion": "v1.0.2",
+  "HomeTrackerDriverVersion": "v1.2.0",
   "HomeTrackerDriverRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Home%20Tracker/HT-driver.groovy",
   "HomeTrackerDriverDiscussion": "",
-  "HomeTrackerDriverUpdateNote": "V1.0.2 - 12/12/19 - Adjustments to match app",
+  "HomeTrackerDriverUpdateNote": "V1.2.0 - 12/17/19 - Major rewrite",
   
   "HubWatchdogDriverVersion": "v1.0.8",
   "HubWatchdogDriverRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Hub%20Watchdog/HW-driver.groovy",
@@ -49,10 +49,10 @@
   "Life360ContainerDiscussion": "",
   "Life360ContainerUpdateNote": "v1.0.3 - 01/03/2020 - Adjustment for AW2",
   
-  "Life360UserVersion": "v1.2.0",
+  "Life360UserVersion": "v1.2.1",
   "Life360UserRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Ported/Life360/L-driver.groovy",
   "Life360UserDiscussion": "",
-  "Life360UserUpdateNote": "v1.2.0 - 01/05/20 - Made some changes based on @Berthoven suggestion. Thanks!",
+  "Life360UserUpdateNote": "v1.2.1 - 01/28/20 - Added Line Height to avatar tile",
   
   "LogWatchdogVersion": "v1.0.7",
   "LogWatchdogRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Log%20Watchdog/LW-driver.groovy",

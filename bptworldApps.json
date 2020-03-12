@@ -73,7 +73,7 @@
   "AtHomeSimulatorUpdateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible",
   
   "BIControlParentVersion": "v2.0.0",
-  "BIControlChild1Version": "v2.0.1",
+  "BIControlChild1Version": "v2.0.2",
   "BIControlChild1Name": "",
   "BIControlChild2Version": "",
   "BIControlChild2Name": "",
@@ -87,7 +87,7 @@
   "BIControlChild3RawCode": "",
   "BIControlChild4RawCode": "",
   "BIControlDiscussion": "https://community.hubitat.com/t/release-bi-control-local-blue-iris-control/5454",
-  "BIControlUpdateNote": "V2.0.1 - 12/07/19 - Added a delay command option, code cleanup, cosmetic changes",
+  "BIControlUpdateNote": "V2.0.2 - 02/16/20 - Fixed typo, thanks to @mluck",
   
   "CATTDirectorParentVersion": "v2.0.0",
   "CATTDirectorChild1Version": "v2.0.1",
@@ -226,7 +226,7 @@
   "GentleWakeUpUpdateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible",
   
   "HomeTrackerParentVersion": "v2.2.3",
-  "HomeTrackerChild1Version": "v2.3.0",
+  "HomeTrackerChild1Version": "v2.3.1",
   "HomeTrackerChild1Name": "",
   "HomeTrackerChild2Version": "",
   "HomeTrackerChild2Name": "",
@@ -240,7 +240,7 @@
   "HomeTrackerChild3RawCode": "",
   "HomeTrackerChild4RawCode": "",
   "HomeTrackerDiscussion": "https://community.hubitat.com/t/release-home-tracker-track-the-coming-and-going-of-house-members-with-announcements-and-push-messages/22709",
-  "HomeTrackerUpdateNote": "V2.3.0 - 02/10/20 - More code changes to home tracking",
+  "HomeTrackerUpdateNote": "V2.3.1 - 02/27/20 - Changes to flash when message is delayed",
   
   "HubWatchdogParentVersion": "V1.0.1",
   "HubWatchdogChild1Version": "V1.0.7",
@@ -396,7 +396,7 @@
   "RemoteWellnessCheckUpdateNote": "V1.0.1 - 01/16/20 - Added more 'Check' options",
   
   "RoomDirectorParentVersion": "v1.0.0",
-  "RoomDirectorChild1Version": "v1.0.0",
+  "RoomDirectorChild1Version": "v1.0.2",
   "RoomDirectorChild1Name": "",
   "RoomDirectorChild2Version": "",
   "RoomDirectorChild2Name": "",
@@ -410,7 +410,7 @@
   "RoomDirectorChild3RawCode": "",
   "RoomDirectorChild4RawCode": "",
   "RoomDirectorDiscussion": "",
-  "RoomDirectorUpdateNote": "V1.0.0 - 11/17/19 - Initial Release",
+  "RoomDirectorUpdateNote": "V1.0.2 - 02/24/20 - Attempt to fix sunrise/sunset settings",
   
   "SendIP2IRParentVersion": "v2.0.0",
   "SendIP2IRChild1Version": "v2.0.0",
@@ -531,8 +531,8 @@
   "TheFlasherDiscussion": "https://community.hubitat.com/t/release-the-flasher-flash-your-lights-based-on-several-triggers/30843",
   "TheFlasherUpdateNote": "V1.0.4 - 01/12/20 - Add Mode restriction",
   
-  "TileMaster2ParentVersion": "v2.0.8",
-  "TileMaster2Child1Version": "v2.1.6",
+  "TileMaster2ParentVersion": "v2.1.1",
+  "TileMaster2Child1Version": "v2.3.3",
   "TileMaster2Child1Name": "",
   "TileMaster2Child2Version": "",
   "TileMaster2Child2Name": "",
@@ -546,7 +546,7 @@
   "TileMaster2Child3RawCode": "",
   "TileMaster2Child4RawCode": "",
   "TileMaster2Discussion": "https://community.hubitat.com/t/release-tile-master-create-a-tile-with-multiple-devices-and-customization-options/23140",
-  "TileMaster2UpdateNote": "V2.1.6 - 02/11/20 - BIG changes - Streamlined code, reduced by over 1000 lines! (Wow!)",
+  "TileMaster2UpdateNote": "V2.3.3 - 03/09/20 - Lots of behind the scenes work. Some bug fixes",
   
   "WebPingerParentVersion": "v2.0.0",
   "WebPingerChild1Version": "v2.0.2",
